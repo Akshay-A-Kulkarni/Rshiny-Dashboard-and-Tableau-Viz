@@ -1,0 +1,385 @@
+---
+title: "Rshiny"
+author: "Akshay Kulkarni"
+date: "April 28, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# This is a small example of an Rshiny Dashboard that I created for a cleaned dataset that I worked on. Once run the script creates a dashboard in a html browser which allows the user to uses various active elements such as sliders ,filters , and buttons to toggle/manipulate visualisation and tables, It also provides the user with saving said changes in various forms.
+
+
+# Instructions:
+1) Run the RMD Script in Rstudio.
+2) Make sure that the script is run from the same folder as the provided csv file which is the data needed for the dasboard visualisations.
+3) Run the entire chunk below. ( takes afew seconds )
+4) Once the server runs a popup in your default browser should appear.
+5) Explore the Rshiny app !
+
+
+```{r}
+
+
+#
+# This is a Shiny web application. You can run the application by clicking
+# the 'Run App' button above.
+#
+# Find out more about building applications with Shiny here:
+#
+#    http://shiny.rstudio.com/
+#
+if (!require("shiny")) install.packages("shiny")
+if (!require("dplyr")) install.packages("dplyr")
+if (!require("stringr")) install.packages("stringr")
+if (!require("DT")) install.packages("DT")
+#if (!require("ggmap")) install.packages("ggmap")
+if (!require("data.table")) install.packages("data.table")
+if (!require("shinythemes")) install.packages("shinythemes")
+if (!require("leaflet")) install.packages("leaflet")
+if (!require("ReporteRs")) install.packages("ReporteRs")
+if (!require("rJava")) install.packages("rJava")
+if (!require("rJava")) install.packages("rstudioapi")
+
+
+
+
+options(scipen=999)
+
+# setting the cwd to the directory from which the script is being run.
+
+
+# # Getting the path of your current open file
+# current_path = rstudioapi::getActiveDocumentContext()$path 
+# setwd(dirname(current_path ))
+# print( getwd() )
+
+df <- read.csv("dataset.csv", header=TRUE, stringsAsFactors = F)
+
+# Define UI for application that draws a histogram
+ui <- shinyUI(
+  
+  fluidPage(
+    theme=shinytheme("simplex"),
+    
+    # Application title
+    titlePanel(""),
+    
+    fluidRow(column(2, wellPanel(uiOutput("Crime"))),
+             column(4, wellPanel(uiOutput("CostofAttendance"))),
+             column(3, wellPanel(uiOutput("NumofAcc"))),
+             column(3, wellPanel(uiOutput("State")))),
+    br(),br(),br(), br(), 
+    navbarPage("Interactions", 
+               tabPanel("Welcome", 
+                        br(),
+                        HTML("<h5>Hello, Welcome to the R Shiny data visualization tool. This tool is solely designed for illustrative purposes and data shown henceforth in this tool is in no way representative of the actual data. This application is built to explore and present the various reporting, automation and data visualation opportunities provided by R Shiny. The website takes time to react and that's not because R Shiny inbuilt is slow but it's due to the server on which the application is hosted.</h5>"),
+                        br(),
+                        HTML("<h5>Tool uses a sample datatset of some of the US universities and includes details such as address, geographical location, cost of attendance, number of accredations received and so on. Details on the application are follows:-</h5>"),
+                        br(),
+                        HTML("<h5><b>Data Explorer: </b>Allows user to filter the data across various cuts and one can also download the filtered data</h5>"), br(),
+                        HTML("<h5/><b>Interactive Map: </b> Provides an interactive map with universities and their details</h5>"), br(),
+                        HTML("<h5/><b>Chart View: </b> Provides an interactive graphs with universities and their cost of attendance vs salaries post graduation. </h5>"), br(),
+                        HTML("<h5/><b>Compare and Decide: </b> User can compare and decide the preferred university based on one's criteria</h5>"), br(),
+                        br(),
+                        #actionButton("Start", "Let's Get Started..."),
+                        br(),
+                        #br(),
+                        HTML("<h5/>Please contact <a href='mailto:kulkarni.akshay@husky.neu.edu?Subject=R-Shiny%20Webpage' target='_top'>Akshay Kulkarni</a> if you find an error or if you have suggestions/questions about the implemention, further enhancements or this webpage.</h5>")),
+               tabPanel("Data Explorer", DT::dataTableOutput("table"), downloadButton("DataDownload" ,"Download Data")),
+               tabPanel("Interactive Map",
+                        # div(class="outer",
+                        #       tags$head(
+                        #           # Include our custom CS
+                        #           includeScript("gomap.js")),
+                        
+                        # If not using custom CSS, set height of leafletOutput to a number instead of percent
+                        leafletOutput("map", width="1000", height="500")),
+               tabPanel("Chart View", plotOutput("gradSalChart"), downloadButton("DemoPPT" ,"Download PPT Slide")),
+               tabPanel("Compare & Decide", sidebarLayout(sidebarPanel(uiOutput("University")),tableOutput("compareTable"))))
+  )
+  
+)
+
+
+
+#Server Logic
+server <- shinyServer(function(input, output, session) {
+  
+  # land <- reactiveValues(check=T)
+  # 
+  # observeEvent(input$Start, {
+  #   land$check = T
+  # })
+  
+  
+  output$Crime<-renderUI({
+    # withProgress(message = 'Making plot', value = 0, {
+    #   # Number of times we'll go through the loop
+    #   n <- 10
+    #   
+    #   for (i in 1:n) {
+    #     # Each time through the loop, add another row of data. This is
+    #     # a stand-in for a long-running computation.
+    #     dat <- rbind(dat, data.frame(x = rnorm(1), y = rnorm(1)))
+    #     
+    #     # Increment the progress bar, and update the detail text.
+    #     incProgress(1/n, detail = paste("Doing part", i))
+    #     
+    #     # Pause for 0.1 seconds to simulate a long computation.
+    #     Sys.sleep(0.1)
+    #   }
+    # })
+    
+    
+    sliderInput("VCP","Crime Percentile (%):", min= 0, max =100, value =c(0,100), step =10)
+    
+  })
+  
+  
+  output$CostofAttendance<-renderUI({
+    sliderInput("COA","Cost of Attendance ($):", min= 0, max =70000, value = c(0,50000), step = 1000)
+  })
+  
+  output$NumofAcc<-renderUI({
+    checkboxGroupInput("NOA", "Number of Accreditions:", c('1' = '1', '2' = '2'), selected = c('1' = '1', '2' = '2'))
+  })
+  
+  # 
+  # observe({
+  #   updateSliderInput(session, 'COA', value = c(0,15000), min = min(df$COSTT4_A), max = round(max(df$COSTT4_A)/10000)*10000, step = 2000)
+  # })
+  
+  output$State<-renderUI({
+    selectInput("State", "State", choices=c('ALL', unique(df$STABBR)), selected='ALL')
+  })
+  
+  output$University<-renderUI({
+    checkboxGroupInput("University", "Select Universities to Compare:", unique(filterData()$INSTNM))
+  })
+  
+  # Filter data based on selections
+  output$table <- renderDataTable(datatable({
+    dta <- filterData()
+    select_colnames <- c('INSTNM', 'CITY','STABBR', 'Number_Of_Accredagency', 'MN_EARN_WNE_P10', 'Program_Offered', 'COSTT4_A','Violent_Crime_Percentile')
+    dta <- dta[, select_colnames]
+    colnames(dta) <- c('INSTITUTION NAME', 'CITY', 'STATE', 'NO. OF ACCREDATIONS', 'AVG. GRAD. SALARY', 'PROGRAMS OFFERED', 'COST OF ATTENDANCE', 'CRIME PERCENTILE')
+    dta
+  }))
+  
+  output$compareTable <- renderTable({
+    #browser()
+    dta <- filterData()
+    if((nrow(dta)>0) & (length(input$University)>1)){
+      select_colnames <- c('INSTNM', 'Branch', 'Url', 'Address', 'CITY','STABBR', 'Sector', 'ACCREDAGENCY', 'MN_EARN_WNE_P10', 'Program_Offered', 'COSTT4_A','Violent_Crime_Percentile')
+      proper_names    <- c('INSTITUTION NAME', 'BRANCH', 'URL', 'ADDRESS', 'CITY', 'STATE', 'SECTOR', 'ACCREDATION AGENCIES', 'AVG. GRAD. SALARY', 'PROGRAMS OFFERED', 'COST OF ATTENDANCE', 'CRIME PERCENTILE')
+      dta <- dta[dta$INSTNM %in% input$University, select_colnames, drop = F]
+      dta$ACCREDAGENCY <- gsub("[|]", ", ", dta$ACCREDAGENCY)
+      colnames(dta)    <- proper_names
+      dta <- t(dta)
+      dta
+      #vanilla.table(dta[-1, ], add.rownames = T)
+    } else {
+      emp <- data.frame("Please select 2 or more universities...")
+      colnames(emp) <- "Please select 2 or more universities..."
+      rownames(emp) <- "Message: "
+      emp
+      #FlexTable(emp)
+    }
+  }, colnames = F, rownames = T)
+  
+  output$map <- renderLeaflet({
+    dta <- filterData()
+    
+    leaflet() %>%
+      addTiles(
+        urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+        attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
+      ) %>% 
+      addCircleMarkers(lng = dta$Long, lat = dta$Lat, radius = 5, layerId = dta$ZIP, fillColor = "#FF0000", fillOpacity = 0.4, stroke=F) %>%
+      setView(lng = -93.85, lat = 37.45, zoom = 4)
+    
+  })
+  
+  
+  # Show a popup at the given location
+  showUniversityPopUp <- function(zipcode, lat, lng) {
+    
+    dta <-filterData()
+    
+    selectedZip <- dta[dta$ZIP == zipcode,]
+    
+    content <- as.character(tagList(
+      
+      tags$h4(selectedZip$INSTNM),
+      
+      tags$strong(HTML(sprintf("%s, %s %s",
+                               
+                               selectedZip$CITY, selectedZip$STABBR, selectedZip$ZIP
+                               
+      ))), tags$br(),
+      
+      sprintf("Cost of Attendance: %s", paste0("$",selectedZip$COSTT4_A)), tags$br(),
+      
+      sprintf("Crime Percentile: %s%%", as.integer(selectedZip$Violent_Crime_Percentile)), tags$br(),
+      
+      sprintf("Accredations: %s", gsub("[|]", ", ", selectedZip$ACCREDAGENCY)), tags$br()
+      
+      # sprintf("Adult population: %s", selectedZip$adultpop)
+      
+    ))
+    
+    leafletProxy("map") %>% addPopups(lng, lat, content, layerId = zipcode)
+    
+  }
+  
+  
+  # When map is clicked, show a popup with city info
+  observe({
+    
+    leafletProxy("map") %>% clearPopups()
+    
+    event <- input$map_marker_click
+    
+    if (is.null(event))
+      
+      return()
+    
+    isolate({
+      
+      showUniversityPopUp(event$id, event$lat, event$lng)
+      
+    })
+    
+  })
+  
+  output$gradSalChart <- renderPlot({
+    dta <- filterData()
+    #browser()
+    dta <- dta[, c('INSTNM', 'COSTT4_A', 'MN_EARN_WNE_P10')]
+    dta[is.na(dta)] = 0
+    dta <- dta[(dta$COSTT4_A!=0 & dta$MN_EARN_WNE_P10!=0),]
+    rownames(dta) <- c()
+    plotChart(dta)
+  })
+  
+  
+  filterData <- reactive({
+    data <- df
+    
+    data$Number_Of_Accredagency <- (str_count(data$ACCREDAGENCY, '[|]') + 1 )
+    
+    data <- data[(data$Violent_Crime_Percentile <= input$VCP[2] & data$Violent_Crime_Percentile >= input$VCP[1]), ]
+    
+    
+    data <- data[(data$COSTT4_A >= input$COA[1] & data$COSTT4_A <= input$COA[2] ), ]
+    
+    
+    data <- data[(data$Number_Of_Accredagency %in% as.numeric(input$NOA)), ]
+    
+    if(input$State!='ALL')
+      data <- data[(data$STABBR == input$State), ]
+    
+    
+    #if (input$St != "All") { data <- data[data$STABBR == input$St,]}
+    
+    rownames(data) <- c()  
+    
+    data
+  })
+  
+
+  output$DemoPPT <- downloadHandler(
+    filename = function(){
+      paste0(tempdir(),"/Demo.pptx")
+    },
+    content = function(file){
+      dta <- filterData()
+      #browser()
+      dta <- dta[, c('INSTNM', 'COSTT4_A', 'MN_EARN_WNE_P10')]
+      dta[is.na(dta)] = 0
+      dta <- dta[(dta$COSTT4_A!=0 & dta$MN_EARN_WNE_P10!=0),]
+      rownames(dta) <- c()
+
+      PP = pptx(template = "Template.pptx")
+      PP = addSlide(PP, slide.layout = "Custom")
+      PP = addTitle(PP, "ReporteRs PPT Demo")
+      PP = addPlot(PP, fun = function() plotChart(dta))
+      dta$ROI = round(dta$MN_EARN_WNE_P10 / dta$COSTT4_A * 100)
+      dta = dta[order(-dta$ROI),]
+
+      Commentary = paste0("The above chart is based on the corresponding user inputs:\n\tCrime Percentile Range: ",
+                          input$VCP[1], "% - ", input$VCP[2], "%; State: ", input$State, "; Cost of Attendance Range ($): ", input$COA[1]," - ", input$COA[2],
+                          "\nBased on the chart above: \n\tBest Return on Investment is for ", dta$INSTNM[1], " (", dta$ROI[1], "%)",
+                          "\n\tWhile, worst Return on Investment is for ", dta$INSTNM[nrow(dta)], " (", dta$ROI[nrow(dta)], "%)")
+      PP = addParagraph(PP, Commentary)
+      writeDoc(PP, file)
+      HTML(paste0("File has been saved down in ", tempdir(), " location."))
+    }
+
+  )
+  
+  
+  output$DataDownload <- downloadHandler(
+    filename = function(){
+      paste0(tempdir(),"/data.csv")
+    },
+    content = function(file){
+      dta <- filterData()
+      select_colnames <- c('INSTNM', 'CITY','STABBR', 'Number_Of_Accredagency', 'MN_EARN_WNE_P10', 'Program_Offered', 'COSTT4_A','Violent_Crime_Percentile')
+      dta <- dta[, select_colnames]
+      colnames(dta) <- c('INSTITUTION NAME', 'CITY', 'STATE', 'NO. OF ACCREDATIONS', 'AVG. GRAD. SALARY', 'PROGRAMS OFFERED', 'COST OF ATTENDANCE', 'CRIME PERCENTILE')
+      rownames(dta) <- c()
+      write.csv(dta, file, row.names = F)
+      HTML(paste0("File has been saved down in ", tempdir(), " location."))
+    }
+    
+  )
+  
+  
+  plotChart <- function(dta){
+    #yticks = seq(-200000,1.05*max(dta[, 2:3], na.rm = T),20000)
+    bp <- barplot(as.matrix(t(dta[, 2:3])), ylim=c(-250000,1.5*max(dta[, 2:3], na.rm = T)), beside = T, las = 3, space = c(0, 0.15), 
+                  ylab = "(Amount in $)", col = c('#5b9bd5', '#ed7d31'), xpd = T, cex.axis = 1.1, cex.names = 1.1)
+    #axis(2, at = yticks, labels = yticks)
+    legend("bottom", legend = c('Cost of Attendance', 'Avg. Post-Grad Salaray'), fill = c('#5b9bd5', '#ed7d31'), cex = 1.2)
+    title('Cost of Attendance vs Avg Post Graduation Salary', cex.main = 1.5)
+    text(x=bp[1,], y = 1.2*dta$COSTT4_A, labels = dta$COSTT4_A)
+    text(x=bp[2,], y = 1.2*dta$MN_EARN_WNE_P10, labels = dta$MN_EARN_WNE_P10)
+    midpoints <- (bp[1, ] + bp[2, ])/2
+    text(x=midpoints, y=-100000, srt = 70, labels = substr(dta$INSTNM,1,35), cex = 1.1)
+  }
+  
+  
+  # observe({
+  #   if(land$check==T){
+  #     # slidervalues <- reactive({
+  #     #   
+  #     #   data.frame(
+  #     #     name = c( "Violent Crime Percentile",
+  #     #               "Cost of Attendance"
+  #     #               
+  #     #     ),
+  #     #     value = as.character(c( input$VCP,
+  #     #                             input$COA
+  #     #     )),
+  #     #     
+  #     #     stringsAsFactors = FALSE)
+  #     #   
+  #     # })
+  #     
+  #     
+  #     
+  #   }
+  # })
+})
+
+# Run the application 
+runApp(list(ui = ui, server = server),host="127.0.0.1",port=2592, launch.browser = TRUE)
+
+
+
+
+```
